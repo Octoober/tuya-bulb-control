@@ -1,0 +1,15 @@
+*.pyc
+*.gz
+
+.idea/
+venv/
+dist/
+build/
+__pycache__/
+tuya_bulb_control/__pycache__/
+tuya_bulb_control.egg-info/
+
+
+config.py
+tests.py
+todo.txt

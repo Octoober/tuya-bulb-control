@@ -1,0 +1,8 @@
+include MANIFEST.in
+include LICENSE
+include README.md
+include requirements.txt
+
+recursive-include tuya_bulb_control *
+
+recursive-exclude * *py[co]
