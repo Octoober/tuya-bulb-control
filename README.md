@@ -2,6 +2,9 @@
 
 Tuya Bulb Control - API wrapper for you smart bulbs <a href="https://www.tuya.com" target="_blanck">**developed by Tuya**</a>
 
+[![PyPi Versions](https://img.shields.io/pypi/v/tuya-bulb-control.svg)](https://pypi.org/project/tuya-bulb-control/)
+[![Python versions](https://img.shields.io/pypi/pyversions/tuya_bulb_control.svg)](https://pypi.org/project/tuya-bulb-control/)
+[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black/)
 
 ---
 ## Installation

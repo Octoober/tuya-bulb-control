@@ -15,7 +15,9 @@ class Bulb(_TuyaApi):
     :param device_id: your device id
     """
 
-    def __init__(self, client_id: str, secret_key: str, region_key: str, device_id=None):
+    def __init__(
+        self, client_id: str, secret_key: str, region_key: str, device_id=None
+    ):
         super().__init__()
         self._client_id = client_id
         self._secret_key = secret_key
@@ -33,29 +35,25 @@ class Bulb(_TuyaApi):
         :return: response dict
         """
 
-        control = json.loads(self.get_control(device_id=device_id)[1]['values'])
-        target = control['range']
+        control = json.loads(self.get_control(device_id=device_id)[1]["values"])
+        target = control["range"]
         mode = target[0] if mode is None else mode
 
-        body = {
-            "commands": [
-                {
-                    "code": "work_mode",
-                    "value": mode
-                }
-            ]
-        }
+        body = {"commands": [{"code": "work_mode", "value": mode}]}
 
         device_id = self._device_id if device_id is None else device_id
 
-        response = self._post(f'/devices/{device_id}/commands', body=body)
+        response = self._post(f"/devices/{device_id}/commands", body=body)
 
         return response
 
-    def color(self, hue_color: int = None,
-              saturation: int = None,
-              value: int = None,
-              device_id: str = None) -> (dict, bool):
+    def color(
+        self,
+        hue_color: int = None,
+        saturation: int = None,
+        value: int = None,
+        device_id: str = None,
+    ) -> (dict, bool):
         """
         Color mode settings.
 
@@ -79,23 +77,27 @@ class Bulb(_TuyaApi):
 
         if hue_color is None or saturation is None or value is None:
             current_value = json.loads(
-                [x['value'] for x in self.get_status() if x['code'] == 'colour_data_v2'][0]
+                [
+                    x["value"]
+                    for x in self.get_status()
+                    if x["code"] == "colour_data_v2"
+                ][0]
             )
 
-            hue_color = current_value['h'] if hue_color is None else hue_color
-            saturation = current_value['s'] / 10 if saturation is None else saturation
-            value = current_value['v'] / 10 if value is None else value
+            hue_color = current_value["h"] if hue_color is None else hue_color
+            saturation = current_value["s"] / 10 if saturation is None else saturation
+            value = current_value["v"] / 10 if value is None else value
 
         body = {
             "commands": [
                 {
                     "code": "colour_data_v2",
-                    "value": {'h': hue_color, 's': saturation * 10, 'v': value * 10}
+                    "value": {"h": hue_color, "s": saturation * 10, "v": value * 10},
                 }
             ]
         }
 
-        response = self._post(postfix=f'/devices/{device_id}/commands', body=body)
+        response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
 
         return response
 
@@ -109,20 +111,15 @@ class Bulb(_TuyaApi):
         """
 
         if status is None:
-            status = not [x['value'] for x in self.get_status() if x['code'] == 'switch_led'][0]
+            status = not [
+                x["value"] for x in self.get_status() if x["code"] == "switch_led"
+            ][0]
 
-        body = {
-            "commands": [
-                {
-                    "code": "switch_led",
-                    "value": status
-                }
-            ]
-        }
+        body = {"commands": [{"code": "switch_led", "value": status}]}
 
         device_id = self._device_id if device_id is None else device_id
 
-        response = self._post(postfix=f'/devices/{device_id}/commands', body=body)
+        response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
 
         return response
 
@@ -138,18 +135,11 @@ class Bulb(_TuyaApi):
         if value > 100:
             return False
 
-        body = {
-            "commands": [
-                {
-                    "code": "temp_value_v2",
-                    "value": value * 10
-                }
-            ]
-        }
+        body = {"commands": [{"code": "temp_value_v2", "value": value * 10}]}
 
         device_id = self._device_id if device_id is None else device_id
 
-        response = self._post(postfix=f'/devices/{device_id}/commands', body=body)
+        response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
 
         return response
 
@@ -165,18 +155,11 @@ class Bulb(_TuyaApi):
         if value < 1 or value > 100:
             return False
 
-        body = {
-            "commands": [
-                {
-                    "code": "bright_value_v2",
-                    "value": value * 10
-                }
-            ]
-        }
+        body = {"commands": [{"code": "bright_value_v2", "value": value * 10}]}
 
         device_id = self._device_id if device_id is None else device_id
 
-        response = self._post(postfix=f'/devices/{device_id}/commands', body=body)
+        response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
 
         return response
 
@@ -194,17 +177,10 @@ class Bulb(_TuyaApi):
 
         value = value * 60
 
-        body = {
-            "commands": [
-                {
-                    "code": "countdown_1",
-                    "value": value
-                }
-            ]
-        }
+        body = {"commands": [{"code": "countdown_1", "value": value}]}
         device_id = self._device_id if device_id is None else device_id
 
-        response = self._post(postfix=f'/devices/{device_id}/commands', body=body)
+        response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
 
         return response
 

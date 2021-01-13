@@ -14,11 +14,11 @@ def generate_signature(msg: str, key: str) -> str:
     :param key: hmac.new(key)
     :return: hexdigest string
     """
-    output = hmac.new(
-        msg=bytes(msg, 'latin-1'),
-        key=bytes(key, 'latin-1'),
-        digestmod=sha256
-    ).hexdigest().upper()
+    output = (
+        hmac.new(msg=bytes(msg, "latin-1"), key=bytes(key, "latin-1"), digestmod=sha256)
+        .hexdigest()
+        .upper()
+    )
 
     return output
 
@@ -29,8 +29,6 @@ def get_timestamp() -> str:
 
     :return: timestamp * 1000
     """
-    timestamp = str(
-        int(time() * 1000)
-    )
+    timestamp = str(int(time() * 1000))
 
     return timestamp

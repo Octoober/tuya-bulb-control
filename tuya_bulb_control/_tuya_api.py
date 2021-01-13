@@ -14,11 +14,11 @@ class _TuyaApi:
     """
 
     def __init__(self):
-        self._client_id: str = ''
-        self._secret_key: str = ''
-        self._device_id: str = ''
-        self.__base_url: str = ''
-        self.__sign_method: str = 'HMAC-SHA256'
+        self._client_id: str = ""
+        self._secret_key: str = ""
+        self._device_id: str = ""
+        self.__base_url: str = ""
+        self.__sign_method: str = "HMAC-SHA256"
 
     def __default_request(self) -> dict:
         """
@@ -28,15 +28,15 @@ class _TuyaApi:
         """
 
         t = get_timestamp()
-        access_token = self._authorized()['result']['access_token']
+        access_token = self._authorized()["result"]["access_token"]
         sign = generate_signature(self._client_id + access_token + t, self._secret_key)
 
         default_headers = {
-            'client_id': self._client_id,
-            'access_token': access_token,
-            'sign_method': self.__sign_method,
-            'sign': sign,
-            't': t
+            "client_id": self._client_id,
+            "access_token": access_token,
+            "sign_method": self.__sign_method,
+            "sign": sign,
+            "t": t,
         }
 
         return default_headers
@@ -47,7 +47,7 @@ class _TuyaApi:
 
         :param region_key: region key. Example: cn; us; eu; in
         """
-        self.__base_url = f'https://openapi.tuya{region_key}.com/v1.0'
+        self.__base_url = f"https://openapi.tuya{region_key}.com/v1.0"
 
     def _authorized(self) -> dict:
         """
@@ -57,15 +57,15 @@ class _TuyaApi:
         """
 
         t = get_timestamp()
-        uri = self.__base_url + '/token?grant_type=1'
+        uri = self.__base_url + "/token?grant_type=1"
         sign = generate_signature(self._client_id + t, self._secret_key)
 
         headers_pattern = {
-            'client_id': self._client_id,
-            'secret': self._secret_key,
-            'sign_method': self.__sign_method,
-            'sign': sign,
-            't': t
+            "client_id": self._client_id,
+            "secret": self._secret_key,
+            "sign_method": self.__sign_method,
+            "sign": sign,
+            "t": t,
         }
 
         response = requests.get(uri, headers=headers_pattern).json()
@@ -116,7 +116,7 @@ class _TuyaApi:
         """
         device_id = self._device_id if device_id is None else device_id
 
-        response = self._get(postfix=f'/devices/{device_id}/status')['result']
+        response = self._get(postfix=f"/devices/{device_id}/status")["result"]
 
         return response
 
@@ -130,6 +130,6 @@ class _TuyaApi:
 
         device_id = self._device_id if device_id is None else device_id
 
-        response = self._get(f'/devices/{device_id}/functions')['result']['functions']
+        response = self._get(f"/devices/{device_id}/functions")["result"]["functions"]
 
         return response
