@@ -3,6 +3,7 @@
 
 import json
 from ._tuya_api import _TuyaApi
+from .exceptions import ValueNotInRange, ModeNotExists
 
 
 class Bulb(_TuyaApi):
@@ -16,7 +17,7 @@ class Bulb(_TuyaApi):
     """
 
     def __init__(
-        self, client_id: str, secret_key: str, region_key: str, device_id=None
+        self, client_id: str, secret_key: str, region_key: str, device_id: str = None
     ):
         super().__init__()
         self._client_id = client_id
@@ -32,20 +33,28 @@ class Bulb(_TuyaApi):
 
         :param mode: work mode. For example: white; colour; scene; music
         :param device_id: device id
+        :raise KeyError: if the bulb doesn't support work mode
+        :raise tuya_bulb_control.exceptions.ModeNotExists: if work mode doesn't exist
         :return: response dict
         """
 
-        control = json.loads(self.get_control(device_id=device_id)[1]["values"])
-        target = control["range"]
-        mode = target[0] if mode is None else mode
+        try:
+            control = json.loads(self.get_control(device_id=device_id)[1]["values"])
+            target = control["range"]
+        except KeyError:
+            raise KeyError
+        else:
+            find_mode = [True for x in target if x == mode]
 
-        body = {"commands": [{"code": "work_mode", "value": mode}]}
+            if not find_mode:
+                raise ModeNotExists(mode=mode)
 
-        device_id = self._device_id if device_id is None else device_id
+            mode = target[0] if mode is None else mode
+            body = {"commands": [{"code": "work_mode", "value": mode}]}
+            device_id = self._device_id if device_id is None else device_id
+            response = self._post(f"/devices/{device_id}/commands", body=body)
 
-        response = self._post(f"/devices/{device_id}/commands", body=body)
-
-        return response
+            return response
 
     def color(
         self,
@@ -53,7 +62,7 @@ class Bulb(_TuyaApi):
         saturation: int = None,
         value: int = None,
         device_id: str = None,
-    ) -> (dict, bool):
+    ) -> dict:
         """
         Color mode settings.
 
@@ -61,19 +70,26 @@ class Bulb(_TuyaApi):
         :param saturation: percentage saturation from 0 to 100
         :param value: percentage brightness from 0 to 100
         :param device_id: your device id
+        :raise tuya_bulb_control.exceptions.ValueNotInRange: if the value is out of range
         :return: response dict or bool
         """
 
         device_id = self._device_id if device_id is None else device_id
 
         if hue_color and hue_color > 360:
-            return False
+            raise ValueNotInRange(
+                message=f"{hue_color} -> The value must be between 0 and 360"
+            )
 
         if saturation and saturation > 100:
-            return False
+            raise ValueNotInRange(
+                message=f"{saturation} -> The value must be between 0 and 100"
+            )
 
         if value and value > 100:
-            return False
+            raise ValueNotInRange(
+                message=f"{value} -> The value must be between 0 and 100"
+            )
 
         if hue_color is None or saturation is None or value is None:
             current_value = json.loads(
@@ -96,7 +112,6 @@ class Bulb(_TuyaApi):
                 }
             ]
         }
-
         response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
 
         return response
@@ -116,70 +131,71 @@ class Bulb(_TuyaApi):
             ][0]
 
         body = {"commands": [{"code": "switch_led", "value": status}]}
-
         device_id = self._device_id if device_id is None else device_id
-
         response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
 
         return response
 
-    def temperature(self, value: int, device_id: str = None) -> (dict, bool):
+    def temperature(self, value: int, device_id: str = None) -> dict:
         """
         Color temperature.
 
         :param device_id: device id
         :param int value: percentage from 0 to 100. For example: 0 = warm or 100 = cold
+        :raise tuya_bulb_control.exceptions.ValueNotInRange: if the value is out of range
         :return: response dict or bool
         """
 
         if value > 100:
-            return False
+            raise ValueNotInRange(
+                message=f"{value} -> The value must be between 0 and 100"
+            )
 
         body = {"commands": [{"code": "temp_value_v2", "value": value * 10}]}
-
         device_id = self._device_id if device_id is None else device_id
-
         response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
 
         return response
 
-    def bright(self, value: int, device_id: str = None) -> (dict, bool):
+    def bright(self, value: int, device_id: str = None) -> dict:
         """
         Brightness level.
 
         :param str device_id: device id
         :param int value: percentage from 1 to 100
+        :raise tuya_bulb_control.exceptions.ValueNotInRange: if the value is out of range
         :return: response dict or bool
         """
 
         if value < 1 or value > 100:
-            return False
+            raise ValueNotInRange(
+                message=f"{value} -> The value must be between 1 and 100"
+            )
 
         body = {"commands": [{"code": "bright_value_v2", "value": value * 10}]}
-
         device_id = self._device_id if device_id is None else device_id
-
         response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
 
         return response
 
-    def switch_timer(self, value: int, device_id: str = None) -> (dict, bool):
+    def switch_timer(self, value: int, device_id: str = None) -> dict:
         """
         On or Off this device by timer.
 
         :param str device_id: device id
-        :param value: minutes. From 1 to 8640 (24 hours)
+        :param value: minutes. From 0 to 1440 (24 hours). To cancel the timer, pass value=0
+        :raise tuya_bulb_control.exceptions.ValueNotInRange: if the value is out of range
         :return: response dict or bool
         """
 
-        if value > 8640:
-            return False
+        if value > 1440:
+            raise ValueNotInRange(
+                message=f"{value} -> The value must be between 1 and 1440"
+            )
 
         value = value * 60
-
         body = {"commands": [{"code": "countdown_1", "value": value}]}
         device_id = self._device_id if device_id is None else device_id
-
         response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
 
         return response

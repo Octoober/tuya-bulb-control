@@ -6,6 +6,7 @@ import json
 import requests
 from typing import NoReturn
 from tuya_bulb_control._helpers import *
+from .exceptions import Authorized
 
 
 class _TuyaApi:
@@ -68,9 +69,25 @@ class _TuyaApi:
             "t": t,
         }
 
-        response = requests.get(uri, headers=headers_pattern).json()
+        try:
+            response = requests.get(uri, headers=headers_pattern).json()
+        except Exception:
+            raise Exception
+        else:
+            if not response["success"]:
+                note = (
+                    "\nNote: One of the reasons for the error is "
+                    "an incorrect client_id or secret_key."
+                    if response["code"] == 1004
+                    else ""
+                )
 
-        return response
+                raise Authorized(
+                    code=response["code"],
+                    message=str(response["msg"]).capitalize() + note,
+                )
+
+            return response
 
     def _get(self, postfix: str) -> dict:
         """
@@ -83,9 +100,12 @@ class _TuyaApi:
         uri = self.__base_url + postfix
         headers_pattern = self.__default_request()
 
-        response = requests.get(uri, headers=headers_pattern).json()
-
-        return response
+        try:
+            response = requests.get(uri, headers=headers_pattern).json()
+        except Exception:
+            raise Exception
+        else:
+            return response
 
     def _post(self, postfix: str, body=None) -> dict:
         """
@@ -103,9 +123,12 @@ class _TuyaApi:
         uri = self.__base_url + postfix
         headers_pattern = self.__default_request()
 
-        response = requests.post(uri, headers=headers_pattern, data=body).json()
-
-        return response
+        try:
+            response = requests.post(uri, headers=headers_pattern, data=body).json()
+        except Exception:
+            raise Exception
+        else:
+            return response
 
     def get_status(self, device_id: str = None) -> dict:
         """
