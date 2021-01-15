@@ -1,7 +1,10 @@
 import os
 from setuptools import setup, find_packages
 
-import tuya_bulb_control as init
+VERSION = "0.1b1"
+PROJECT = "tuya_bulb_control"
+AUTHOR = "Kirill Hickey"
+LICENSE = "MIT"
 
 ROOT_PATH = os.path.abspath(os.path.dirname(__file__))
 
@@ -22,14 +25,14 @@ install_requires = [
 long_description = _read(os.path.join(ROOT_PATH, "README.md"))
 
 setup(
-    name=init.__project__,
-    version=init.__version__,
+    name=PROJECT,
+    version=VERSION,
     description="Tuya Bulb Control - API wrapper for you smart bulbs developed by Tuya",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    author=init.__author__,
+    author=AUTHOR,
     url="https://github.com/Octoober/tuya-bulb-control",
-    license=init.__license__,
+    license=LICENSE,
     keywords="iot tuya api wrapper",
     classifiers=[
         "Development Status :: 4 - Beta",
