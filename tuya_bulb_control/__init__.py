@@ -1,4 +1,4 @@
-__version__ = "0.0.3"
+__version__ = "0.1b"
 __project__ = "tuya_bulb_control"
 __author__ = "Kirill Hickey"
 __license__ = "MIT"

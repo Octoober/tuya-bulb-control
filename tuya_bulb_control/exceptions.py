@@ -1,36 +1,31 @@
-class Authorized(Exception):
-    """
-    Authorized exception
-    """
-
-    def __init__(self, code: str = "0", message: str = "Authorized error."):
-        self.code = code
-        self.message = message
-
-    def __str__(self) -> str:
-        return f"Error code: {self.code} -> {self.message}."
-
-
-class ValueNotInRange(Exception):
-    """
-    Value exception
-    """
-
-    def __init__(self, message: str = "Value not in range."):
-        self.message = message
-
-    def __str__(self) -> str:
-        return "%s." % self.message
-
-
-class ModeNotExists(Exception):
-    """
-    Work mode exception
-    """
-
-    def __init__(self, mode: str = None, message: str = "Mode not exists"):
-        self.mode = mode
-        self.message = message
+class __MainException(Exception):
+    def __init__(self, target: str, msg: str = ""):
+        self.target = target
+        self.msg = msg
 
     def __str__(self):
-        return f"Mode: {self.mode} -> {self.message}."
+        return f"{self.target} -> {self.msg}"
+
+
+class ModeNotSupported(__MainException):
+    def __init__(self, target: str, msg: str = "Mode not supported your device."):
+        self.target = target
+        self.msg = msg
+
+
+class FunctionNotSupported(__MainException):
+    def __init__(self, target: str, msg: str = "Function not supported your device."):
+        self.target = target
+        self.msg = msg
+
+
+class ArgumentError(__MainException):
+    def __init__(self, target: str, msg: str = "Argument error."):
+        self.target = target
+        self.msg = msg
+
+
+class AuthorizedError(__MainException):
+    def __init__(self, target: str, msg: str = "Authorized error."):
+        self.target = target
+        self.msg = msg

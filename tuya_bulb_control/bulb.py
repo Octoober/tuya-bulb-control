@@ -3,7 +3,7 @@
 
 import json
 from ._tuya_api import _TuyaApi
-from .exceptions import ValueNotInRange, ModeNotExists
+from .exceptions import ModeNotSupported, FunctionNotSupported, ArgumentError
 
 
 class Bulb(_TuyaApi):
@@ -19,202 +19,409 @@ class Bulb(_TuyaApi):
     def __init__(
         self, client_id: str, secret_key: str, region_key: str, device_id: str = None
     ):
-        super().__init__()
-        self._client_id = client_id
-        self._secret_key = secret_key
+        super().__init__(
+            client_id=client_id, secret_key=secret_key, region_key=region_key
+        )
         self._device_id = device_id
 
-        self._set_region(region_key)
+    def _function_exists(self, code_name: str, device_id: str) -> bool:
+        """
+        Check if a functions exists.
+        Use KeyError exception to catch error.
 
-    def work_mode(self, mode: str = None, device_id: str = None) -> dict:
+        :param code_name: function name
+        :param device_id: device id
+        :return: state
+        """
+        functions = self.functions(device_id=device_id)
+
+        try:
+            state = [True for item in functions if code_name == item["code"]][0]
+        except (KeyError, IndexError):
+            raise FunctionNotSupported(target=code_name)
+
+        return state
+
+    def _available_values(self, code_name: str, device_id: str):
+        values = [
+            item["values"]
+            for item in self.functions(device_id=device_id)
+            if item["code"] == code_name
+        ][0]
+
+        return values
+
+    def _template(
+        self,
+        value: int,
+        code_name: str,
+        device_id: str,
+    ) -> dict:
+        """
+        Brightness level for multi-version.
+
+        :param value:
+        :param device_id: select device_id for this action only. tuya_bulb_control.Bulb(device_id) will be ignored
+        :raise tuya_bulb_control.exceptions.ValueNotInRange: if the value is out of range
+        :return: response dict or bool
+        """
+        device_id = self._check_device_id(device_id)
+
+        self._function_exists(code_name=code_name, device_id=device_id)
+
+        body = {"commands": [{"code": code_name, "value": value}]}
+        response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
+
+        return response
+
+    def _check_device_id(self, device_id: str) -> str:
+        """
+        Check device id.
+        :param device_id: device id
+        :return: current device id
+        """
+        device_id = self._device_id if device_id is None else device_id
+
+        if not device_id:
+            raise ArgumentError(
+                target=device_id, msg="Argument device_id must not be empty."
+            )
+
+        return device_id
+
+    @staticmethod
+    def _rgb_to_hsv(rgb: tuple) -> tuple:
+        """
+        RGB to HSV converter.
+
+        :param rgb: RGB coordinates (0-255, 0-255, 0-255)
+        :return: HVS coordinates
+        """
+        red = rgb[0] / 255
+        green = rgb[1] / 255
+        blue = rgb[2] / 255
+
+        cmax = max(red, green, blue)
+        cmin = min(red, green, blue)
+
+        delta = cmax - cmin
+
+        if delta == 0:
+            raise ValueError(f"{rgb} -> Don`t use the same RGB coordinates.")
+        elif cmax > 1:
+            raise ValueError(f"{rgb} -> RGB coordinates must be in the range 0-255")
+        elif cmax == red:
+            hue = ((green - blue) / delta) % 6
+        elif cmax == green:
+            hue = (blue - red) / delta + 2
+        else:
+            hue = (red - green) / delta + 4
+
+        hue *= 60
+
+        hue = hue + 360 if hue < 0 else hue
+
+        if cmax == 0:
+            saturation = 0
+        else:
+            saturation = delta / cmax
+
+        value = cmax
+
+        hsv = tuple([round(i) for i in (hue, saturation, value)])
+
+        return hsv
+
+    @staticmethod
+    def _make_body(code_name: str, value) -> dict:
+        """
+        Template for requests.
+
+        :param code_name: code name
+        :param value: value
+        :return:
+        """
+        body = {
+            "commands": [
+                {
+                    "code": code_name,
+                    "value": value,
+                }
+            ]
+        }
+
+        return body
+
+    def set_work_mode(self, mode_name: str, device_id: str = None) -> dict:
         """
         Select work mode.
-        You can get a list of mods from get_control()[1]['values']['range']
+        You can get a list of mods from tuya_bulb_control.Bulb.functions()
+        Uses code: work_mode
 
-        :param mode: work mode. For example: white; colour; scene; music
-        :param device_id: device id
+        :param mode_name: mode name. For example: white; colour; scene; music
+        :param device_id: select device_id for this action only. tuya_bulb_control.Bulb(device_id) will be ignored
         :raise KeyError: if the bulb doesn't support work mode
         :raise tuya_bulb_control.exceptions.ModeNotExists: if work mode doesn't exist
         :return: response dict
         """
+        code_name = "work_mode"
+        device_id = self._check_device_id(device_id)
 
-        try:
-            control = json.loads(self.get_control(device_id=device_id)[1]["values"])
-            target = control["range"]
-        except KeyError:
-            raise KeyError
-        else:
-            find_mode = [True for x in target if x == mode]
+        self._function_exists(code_name=code_name, device_id=device_id)
 
-            if not find_mode:
-                raise ModeNotExists(mode=mode)
+        available_values = json.loads(
+            self._available_values(code_name=code_name, device_id=device_id)
+        )["range"]
 
-            mode = target[0] if mode is None else mode
-            body = {"commands": [{"code": "work_mode", "value": mode}]}
-            device_id = self._device_id if device_id is None else device_id
-            response = self._post(f"/devices/{device_id}/commands", body=body)
+        if not [item for item in available_values if item == mode_name]:
+            raise ModeNotSupported(target=mode_name)
 
-            return response
-
-    def color(
-        self,
-        hue_color: int = None,
-        saturation: int = None,
-        value: int = None,
-        device_id: str = None,
-    ) -> dict:
-        """
-        Color mode settings.
-
-        :param hue_color: hue color from 0 to 360.
-        :param saturation: percentage saturation from 0 to 100
-        :param value: percentage brightness from 0 to 100
-        :param device_id: your device id
-        :raise tuya_bulb_control.exceptions.ValueNotInRange: if the value is out of range
-        :return: response dict or bool
-        """
-
-        device_id = self._device_id if device_id is None else device_id
-
-        if hue_color and hue_color > 360:
-            raise ValueNotInRange(
-                message=f"{hue_color} -> The value must be between 0 and 360"
-            )
-
-        if saturation and saturation > 100:
-            raise ValueNotInRange(
-                message=f"{saturation} -> The value must be between 0 and 100"
-            )
-
-        if value and value > 100:
-            raise ValueNotInRange(
-                message=f"{value} -> The value must be between 0 and 100"
-            )
-
-        if hue_color is None or saturation is None or value is None:
-            current_value = json.loads(
-                [
-                    x["value"]
-                    for x in self.get_status()
-                    if x["code"] == "colour_data_v2"
-                ][0]
-            )
-
-            hue_color = current_value["h"] if hue_color is None else hue_color
-            saturation = current_value["s"] / 10 if saturation is None else saturation
-            value = current_value["v"] / 10 if value is None else value
-
-        body = {
-            "commands": [
-                {
-                    "code": "colour_data_v2",
-                    "value": {"h": hue_color, "s": saturation * 10, "v": value * 10},
-                }
-            ]
-        }
-        response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
+        body = self._make_body(code_name=code_name, value=mode_name)
+        response = self._post(f"/devices/{device_id}/commands", body=body)
 
         return response
 
-    def switch(self, status: bool = None, device_id: str = None) -> dict:
+    def set_colour(self, rgb: tuple, device_id: str = None) -> dict:
         """
-        ON or OFF the device.
+        Colour mode settings.
+        Uses code: colour_data
 
-        :param status: explicit status indication
-        :param device_id: device id
+        :param rgb: rgb coordinates
+        :param device_id: select device_id for this action only. tuya_bulb_control.Bulb(device_id) will be ignored
+        :raise tuya_bulb_control.exceptions.ValueNotInRange: if the value is out of range
         :return: response dict
         """
+        code_name = "colour_data"
+        device_id = self._check_device_id(device_id)
 
-        if status is None:
-            status = not [
-                x["value"] for x in self.get_status() if x["code"] == "switch_led"
-            ][0]
+        self._function_exists(code_name=code_name, device_id=device_id)
 
-        body = {"commands": [{"code": "switch_led", "value": status}]}
-        device_id = self._device_id if device_id is None else device_id
+        h, s, v = self._rgb_to_hsv(rgb)
+        body = self._make_body(code_name, {"h": h, "s": s * 255, "v": v * 255})
         response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
 
         return response
 
-    def temperature(self, value: int, device_id: str = None) -> dict:
+    def set_colour_v2(self, rgb: tuple, device_id: str = None) -> dict:
         """
-        Color temperature.
+        Colour mode settings.
+        Uses code: colour_data_v2
 
-        :param device_id: device id
-        :param int value: percentage from 0 to 100. For example: 0 = warm or 100 = cold
+        :param rgb: rgb coordinates
+        :param device_id: select device_id for this action only. tuya_bulb_control.Bulb(device_id) will be ignored
         :raise tuya_bulb_control.exceptions.ValueNotInRange: if the value is out of range
-        :return: response dict or bool
+        :return: response dict
         """
+        code_name = "colour_data_v2"
+        device_id = self._check_device_id(device_id)
 
-        if value > 100:
-            raise ValueNotInRange(
-                message=f"{value} -> The value must be between 0 and 100"
-            )
+        self._function_exists(code_name=code_name, device_id=device_id)
 
-        body = {"commands": [{"code": "temp_value_v2", "value": value * 10}]}
-        device_id = self._device_id if device_id is None else device_id
+        h, s, v = self._rgb_to_hsv(rgb)
+        body = self._make_body(
+            code_name=code_name, value={"h": h, "s": s * 1000, "v": v * 1000}
+        )
         response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
 
         return response
 
-    def bright(self, value: int, device_id: str = None) -> dict:
+    def set_toggle(self, state: bool = None, device_id: str = None) -> dict:
         """
-        Brightness level.
+        Turn ON or OFF the bulb.
+        Uses code: switch_led
 
-        :param str device_id: device id
-        :param int value: percentage from 1 to 100
-        :raise tuya_bulb_control.exceptions.ValueNotInRange: if the value is out of range
-        :return: response dict or bool
+        :param state: explicit status indication
+        :param device_id: select device_id for this action only. tuya_bulb_control.Bulb(device_id) will be ignored
+        :return: response dict
         """
+        code_name = "switch_led"
+        device_id = self._check_device_id(device_id)
 
-        if value < 1 or value > 100:
-            raise ValueNotInRange(
-                message=f"{value} -> The value must be between 1 and 100"
-            )
+        self._function_exists(code_name=code_name, device_id=device_id)
 
-        body = {"commands": [{"code": "bright_value_v2", "value": value * 10}]}
-        device_id = self._device_id if device_id is None else device_id
+        if state is None:
+            state = not self.current_value(code_name=code_name, device_id=device_id)
+
+        body = self._make_body(code_name=code_name, value=state)
         response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
 
         return response
 
-    def switch_timer(self, value: int, device_id: str = None) -> dict:
+    def set_toggle_timer(self, value: int, device_id: str = None) -> dict:
         """
         On or Off this device by timer.
+        Uses code: countdown_1
 
-        :param str device_id: device id
-        :param value: minutes. From 0 to 1440 (24 hours). To cancel the timer, pass value=0
+        :param value: minutes. From 0-1440 (24 hours). To cancel the timer, pass value=0
+        :param device_id: select device_id for this action only. tuya_bulb_control.Bulb(device_id) will be ignored
         :raise tuya_bulb_control.exceptions.ValueNotInRange: if the value is out of range
         :return: response dict or bool
         """
+        code_name = "countdown_1"
+        device_id = self._check_device_id(device_id)
 
         if value > 1440:
-            raise ValueNotInRange(
-                message=f"{value} -> The value must be between 1 and 1440"
-            )
+            raise ValueError(f"{code_name} -> The value must be between 0-1440")
 
-        value = value * 60
-        body = {"commands": [{"code": "countdown_1", "value": value}]}
-        device_id = self._device_id if device_id is None else device_id
+        self._function_exists(code_name=code_name, device_id=device_id)
+
+        value = value * 60  # To seconds
+
+        body = self._make_body(code_name=code_name, value=value)
         response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
 
         return response
 
-    def blink(self, steps: int, device_id: str = None) -> dict:
+    def turn_on(self, device_id: str = None) -> dict:
         """
-        Blinks the set numbers of times.
-        Running in line.
+        Turn ON the bulb.
+        Uses code: switch_led
 
-        :param str device_id: device id
-        :param int steps: number of blinks
+        :param device_id: select device_id for this action only. tuya_bulb_control.Bulb(device_id) will be ignored
+        :return: response status dict
+        """
+
+        device_id = self._check_device_id(device_id)
+        response = self.set_toggle(state=True, device_id=device_id)
+
+        return response
+
+    def turn_off(self, device_id: str = None) -> dict:
+        """
+        Turn OFF the bulb.
+        Uses code: switch_led
+
+        :param device_id: select device_id for this action only. tuya_bulb_control.Bulb(device_id) will be ignored
+        :return: response status dict
+        """
+
+        device_id = self._check_device_id(device_id)
+        response = self.set_toggle(state=False, device_id=device_id)
+
+        return response
+
+    def set_colour_temp(self, value: int, device_id: str = None) -> dict:
+        """
+        Colour temperature.
+        Uses code: temp_value
+
+        :param value: percentage from 25-255. For example: 25 = warm or 255 = cold
+        :param device_id: select device_id for this action only. tuya_bulb_control.Bulb(device_id) will be ignored
+        :raise tuya_bulb_control.exceptions.ValueNotInRange: if the value is out of range
         :return: response dict or bool
         """
-        steps = steps * 2
-        steps = steps if steps % 2 == 0 else steps + 1
-        device_id = self._device_id if device_id is None else device_id
-        request_status = None
 
-        for _ in range(steps):
-            request_status = self.switch(device_id=device_id)
+        code_name = "temp_value"
 
-        return request_status
+        if value < 25 or value > 255:
+            raise ValueError(f"{value} -> The value not in rage 25-255")
+
+        response = self._template(value=value, code_name=code_name, device_id=device_id)
+
+        return response
+
+    def set_colour_temp_v2(self, value: int, device_id: str = None) -> dict:
+        """
+        Colour temperature.
+        Uses code: temp_value_v2
+
+        :param value: percentage from 0-100. For example: 0 = warm or 100 = cold
+        :param device_id: select device_id for this action only. tuya_bulb_control.Bulb(device_id) will be ignored
+        :raise tuya_bulb_control.exceptions.ValueNotInRange: if the value is out of range
+        :return: response dict or bool
+        """
+        code_name = "temp_value_v2"
+
+        if value < 0 or value > 100:
+            raise ValueError(f"{value} -> The value not in rage 0-100")
+
+        response = self._template(
+            value=value * 10, code_name=code_name, device_id=device_id
+        )
+
+        return response
+
+    def set_bright(self, value: int, device_id: str = None) -> dict:
+        """
+        Brightness level.
+        Uses code: bright_value
+
+        :param value: percentage from 25-255
+        :param device_id: select device_id for this action only. tuya_bulb_control.Bulb(device_id) will be ignored
+        :raise tuya_bulb_control.exceptions.ValueNotInRange: if the value is out of range
+        :return: response dict or bool
+        """
+        code_name = "bright_value"
+
+        if value < 25 or value > 255:
+            raise ValueError(f"{value} -> The value not in rage 25-255")
+
+        response = self._template(value=value, code_name=code_name, device_id=device_id)
+
+        return response
+
+    def set_bright_v2(self, value: int, device_id: str = None) -> dict:
+        """
+        Brightness level. v2 only.
+        Uses code: bright_value_v2
+
+        :param value: percentage from 1-100
+        :param device_id: select device_id for this action only. tuya_bulb_control.Bulb(device_id) will be ignored
+        :raise tuya_bulb_control.exceptions.ValueNotInRange: if the value is out of range
+        :return: response dict or bool
+        """
+        code_name = "bright_value_v2"
+
+        if value < 1 or value > 100:
+            raise ValueError(f"{value} -> The value not in rage 1-100")
+
+        response = self._template(
+            value=value * 10, code_name=code_name, device_id=device_id
+        )
+
+        return response
+
+    def state(self, device_id: str = None) -> dict:
+        """
+        Get current state of the bulb.
+
+        :param device_id: select device_id for this action only. tuya_bulb_control.Bulb(device_id) will be ignored
+        :return: response status dict
+        """
+
+        device_id = self._check_device_id(device_id)
+        response = self._get(postfix=f"/devices/{device_id}/status")["result"]
+
+        return response
+
+    def functions(self, device_id: str = None) -> dict:
+        """
+        Get all available functions for this bulb.
+
+        :param device_id: select device_id for this action only. tuya_bulb_control.Bulb(device_id) will be ignored
+        :return: response functions dict
+        """
+
+        device_id = self._check_device_id(device_id)
+        response = self._get(f"/devices/{device_id}/functions")["result"]["functions"]
+
+        return response
+
+    def current_value(self, code_name: str, device_id: str = None):
+        """
+        Get value the selected function.
+
+        :param code_name: name to find
+        :param device_id: select device_id for this action only. tuya_bulb_control.Bulb(device_id) will be ignored
+        :return: value
+        """
+        try:
+            value = [
+                item["value"]
+                for item in self.state(device_id)
+                if item["code"] == code_name
+            ][0]
+        except (IndexError, KeyError):
+            raise FunctionNotSupported(target=code_name)
+
+        return value

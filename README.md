@@ -28,17 +28,21 @@ SECRET_KEY = ''
 DEVICE_ID = ''
 REGION_KEY = 'eu'
 
-
-bulb = Bulb(client_id=CLIENT_ID, secret_key=SECRET_KEY, region_key=REGION_KEY, device_id=DEVICE_ID)
+bulb = Bulb(
+    client_id=CLIENT_ID,
+    secret_key=SECRET_KEY,
+    device_id=DEVICE_ID,
+    region_key=REGION_KEY
+)
 
 # Turn on the bulb
-bulb.switch(status=True)
+bulb.turn_on()
 
-# Turn on colour mode
-bulb.work_mode(mode='colour')
+# Change the color to green
+bulb.set_colour_v2(rgb=(0, 255, 0))
 
-# Choosing color, saturation and brightness(value)
-bulb.color(hue_color=260, saturation=50, value=50)
+# Turn off the light bulb after 5 minutes
+bulb.set_toggle_timer(value=5)
 ```
 
 ## Getting access to API

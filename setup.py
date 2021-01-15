@@ -29,10 +29,10 @@ setup(
     long_description_content_type="text/markdown",
     author=init.__author__,
     url="https://github.com/Octoober/tuya-bulb-control",
-    license="MIT",
+    license=init.__license__,
     keywords="iot tuya api wrapper",
     classifiers=[
-        "Development Status :: 5 - Production/Stable",
+        "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python",
