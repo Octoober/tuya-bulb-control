@@ -1,7 +1,7 @@
 import os
 from setuptools import setup, find_packages
 
-VERSION = "0.1b1"
+VERSION = "0.1b2"
 PROJECT = "tuya_bulb_control"
 AUTHOR = "Kirill Hickey"
 LICENSE = "MIT"
@@ -44,6 +44,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
+    zip_safe=False,
     packages=find_packages(),
     install_requires=install_requires,
     include_package_data=True,

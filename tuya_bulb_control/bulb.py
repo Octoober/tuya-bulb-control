@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import colorsys
 from ._tuya_api import _TuyaApi
 from .exceptions import ModeNotSupported, FunctionNotSupported, ArgumentError
 
@@ -17,7 +18,7 @@ class Bulb(_TuyaApi):
     """
 
     def __init__(
-        self, client_id: str, secret_key: str, region_key: str, device_id: str = None
+            self, client_id: str, secret_key: str, region_key: str, device_id: str = None
     ):
         super().__init__(
             client_id=client_id, secret_key=secret_key, region_key=region_key
@@ -52,10 +53,10 @@ class Bulb(_TuyaApi):
         return values
 
     def _template(
-        self,
-        value: int,
-        code_name: str,
-        device_id: str,
+            self,
+            value: int,
+            code_name: str,
+            device_id: str,
     ) -> dict:
         """
         Brightness level for multi-version.
@@ -88,49 +89,6 @@ class Bulb(_TuyaApi):
             )
 
         return device_id
-
-    @staticmethod
-    def _rgb_to_hsv(rgb: tuple) -> tuple:
-        """
-        RGB to HSV converter.
-
-        :param rgb: RGB coordinates (0-255, 0-255, 0-255)
-        :return: HVS coordinates
-        """
-        red = rgb[0] / 255
-        green = rgb[1] / 255
-        blue = rgb[2] / 255
-
-        cmax = max(red, green, blue)
-        cmin = min(red, green, blue)
-
-        delta = cmax - cmin
-
-        if delta == 0:
-            raise ValueError(f"{rgb} -> Don`t use the same RGB coordinates.")
-        elif cmax > 1:
-            raise ValueError(f"{rgb} -> RGB coordinates must be in the range 0-255")
-        elif cmax == red:
-            hue = ((green - blue) / delta) % 6
-        elif cmax == green:
-            hue = (blue - red) / delta + 2
-        else:
-            hue = (red - green) / delta + 4
-
-        hue *= 60
-
-        hue = hue + 360 if hue < 0 else hue
-
-        if cmax == 0:
-            saturation = 0
-        else:
-            saturation = delta / cmax
-
-        value = cmax
-
-        hsv = tuple([round(i) for i in (hue, saturation, value)])
-
-        return hsv
 
     @staticmethod
     def _make_body(code_name: str, value) -> dict:
@@ -196,8 +154,9 @@ class Bulb(_TuyaApi):
 
         self._function_exists(code_name=code_name, device_id=device_id)
 
-        h, s, v = self._rgb_to_hsv(rgb)
-        body = self._make_body(code_name, {"h": h, "s": s * 255, "v": v * 255})
+        h, s, v = colorsys.rgb_to_hsv(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255)
+
+        body = self._make_body(code_name, {"h": h * 360, "s": s * 255, "v": v * 255})
         response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
 
         return response
@@ -217,9 +176,10 @@ class Bulb(_TuyaApi):
 
         self._function_exists(code_name=code_name, device_id=device_id)
 
-        h, s, v = self._rgb_to_hsv(rgb)
+        h, s, v = colorsys.rgb_to_hsv(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255)
+
         body = self._make_body(
-            code_name=code_name, value={"h": h, "s": s * 1000, "v": v * 1000}
+            code_name=code_name, value={"h": h * 360, "s": s * 1000, "v": v * 1000}
         )
         response = self._post(postfix=f"/devices/{device_id}/commands", body=body)
 
