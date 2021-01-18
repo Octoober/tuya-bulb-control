@@ -21,13 +21,13 @@ bulb = Bulb(
 
 def change_colour() -> NoReturn:
     # Get current HSV colour
-    current_colour = json.loads(bulb.current_value('colour_data_v2'))
+    current_colour = json.loads(bulb.current_value("colour_data_v2"))
 
     # Conversion current HSV to RGB
     current_colour = colorsys.hsv_to_rgb(
         h=current_colour["h"] / 360,
         s=current_colour["s"] / 1000,
-        v=current_colour["v"] / 1000
+        v=current_colour["v"] / 1000,
     )
     # Convert the current RGB to format 0-255
     current_colour = tuple(map(lambda x: int(x * 255), current_colour))
@@ -46,13 +46,18 @@ def toggle_status(button) -> NoReturn:
     bulb.set_toggle()
 
     # Change button text
-    button['text'] = "ON" if button['text'] == "OFF" else "OFF"
+    button["text"] = "ON" if button["text"] == "OFF" else "OFF"
 
 
 def init_ui() -> NoReturn:
     # Switch button
-    toggle_status_btn = Button(text="ON" if not bulb.current_value('switch_led') else "OFF",  # Text depends on state
-                               width=20, command=lambda: toggle_status(toggle_status_btn))
+    toggle_status_btn = Button(
+        text="ON"
+        if not bulb.current_value("switch_led")
+        else "OFF",  # Text depends on state
+        width=20,
+        command=lambda: toggle_status(toggle_status_btn),
+    )
     # Colour selection button
     change_colour_btn = Button(text="Change colour", width=20, command=change_colour)
 
@@ -61,7 +66,7 @@ def init_ui() -> NoReturn:
     change_colour_btn.pack(side="right", padx=5, pady=5, ipady=6)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     tk = Tk()
     tk.title("Colour change example")
     init_ui()

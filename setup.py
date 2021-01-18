@@ -1,12 +1,11 @@
 import os
+from configparser import ConfigParser
 from setuptools import setup, find_packages
 
-VERSION = "0.1b2"
-PROJECT = "tuya_bulb_control"
-AUTHOR = "Kirill Hickey"
-LICENSE = "MIT"
-
 ROOT_PATH = os.path.abspath(os.path.dirname(__file__))
+
+config = ConfigParser()
+config.read(os.path.join(ROOT_PATH, "tuya_bulb_control/project.ini"))
 
 
 def _read(filename):
@@ -25,14 +24,14 @@ install_requires = [
 long_description = _read(os.path.join(ROOT_PATH, "README.md"))
 
 setup(
-    name=PROJECT,
-    version=VERSION,
+    name=config.get("Info", "project"),
+    version=config.get("Info", "version"),
     description="Tuya Bulb Control - API wrapper for you smart bulbs developed by Tuya",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    author=AUTHOR,
+    author=config.get("Info", "author"),
     url="https://github.com/Octoober/tuya-bulb-control",
-    license=LICENSE,
+    license=config.get("Info", "license"),
     keywords="iot tuya api wrapper",
     classifiers=[
         "Development Status :: 4 - Beta",

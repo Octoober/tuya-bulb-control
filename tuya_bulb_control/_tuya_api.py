@@ -22,6 +22,7 @@ class _TuyaApi:
 
         self._base_url = f"https://openapi.tuya{self._region_key}.com/v1.0"
         self.__sign_method: str = "HMAC-SHA256"
+        self.__access_token = self.__token()
 
     @staticmethod
     def __generate_signature(msg: str, key: str) -> str:
@@ -59,16 +60,14 @@ class _TuyaApi:
 
         :return: default headers
         """
-
         t = self.__get_timestamp()
-        access_token = self.__token()
         sign = self.__generate_signature(
-            self._client_id + access_token + t, self._secret_key
+            self._client_id + self.__access_token + t, self._secret_key
         )
 
         default_headers = {
             "client_id": self._client_id,
-            "access_token": access_token,
+            "access_token": self.__access_token,
             "sign_method": self.__sign_method,
             "sign": sign,
             "t": t,
@@ -82,7 +81,6 @@ class _TuyaApi:
 
         :return: access token
         """
-
         t = self.__get_timestamp()
         uri = self._base_url + "/token?grant_type=1"
         sign = self.__generate_signature(self._client_id + t, self._secret_key)
@@ -109,8 +107,8 @@ class _TuyaApi:
                 token = response["result"]["access_token"]
             except KeyError:
                 raise KeyError("Failed to get access_token")
-            else:
-                return token
+
+            return token
 
     def _get(self, postfix: str) -> dict:
         """
@@ -119,7 +117,6 @@ class _TuyaApi:
         :param postfix: request address. Example: /device/{device_id}/commands
         :return: response dict
         """
-
         uri = self._base_url + postfix
         headers = self.__request_template()
 
@@ -127,8 +124,8 @@ class _TuyaApi:
             response = requests.get(uri, headers=headers).json()
         except Exception:
             raise Exception
-        else:
-            return response
+
+        return response
 
     def _post(self, postfix: str, body=None) -> dict:
         """
@@ -138,7 +135,6 @@ class _TuyaApi:
         :param body: request body
         :return: response dict
         """
-
         if body is None:
             body = {}
 
@@ -150,5 +146,5 @@ class _TuyaApi:
             response = requests.post(uri, headers=headers, data=body).json()
         except Exception:
             raise Exception
-        else:
-            return response
+
+        return response
