@@ -110,7 +110,7 @@ class _TuyaApi:
 
             return token
 
-    def _get(self, postfix: str) -> dict:
+    def _get(self, postfix: str, check_token: bool = True) -> dict:
         """
         Performs a GET request at the specified address.
 
@@ -122,12 +122,15 @@ class _TuyaApi:
 
         try:
             response = requests.get(uri, headers=headers).json()
+            if check_token and not response["success"] and response['code'] == 1010:
+                self.__access_token = self.__token()
+                return self._get(postfix, False)
         except Exception:
             raise Exception
 
         return response
 
-    def _post(self, postfix: str, body=None) -> dict:
+    def _post(self, postfix: str, body=None, check_token: bool = True) -> dict:
         """
         Performs a POST request at specified address.
 
@@ -144,6 +147,9 @@ class _TuyaApi:
 
         try:
             response = requests.post(uri, headers=headers, data=body).json()
+            if check_token and not response["success"] and response['code'] == 1010:
+                self.__access_token = self.__token()
+                return self._post(postfix, body, False)
         except Exception:
             raise Exception
 
