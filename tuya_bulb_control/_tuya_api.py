@@ -25,6 +25,19 @@ class _TuyaApi:
         self.__access_token = self.__token()
 
     @staticmethod
+    def __generate_stringToSign(method: str, body: str, headers: dict, url: str):
+        """
+        Generates the stringToSign required to send the request
+        :param msg: hmac.new(msg)
+        :param key: hmac.new(key)
+        :return: a list as a string joined by a '\n'
+        """
+        header = ""
+        for key, value in headers.items():
+            header += f"{key}:{value}\n"
+        return '\n'.join([method, sha256(str.encode(body)).hexdigest(), header, url])
+
+    @staticmethod
     def __generate_signature(msg: str, key: str) -> str:
         """
         Generates the signature required to send the request.
@@ -54,15 +67,16 @@ class _TuyaApi:
 
         return timestamp
 
-    def __request_template(self) -> dict:
+    def __request_template(self, url, method, body: str = "") -> dict:
         """
         Default request type.
 
         :return: default headers
         """
         t = self.__get_timestamp()
+        stringToSign = self.__generate_stringToSign(method, body if isinstance(body,str) else json.dumps(body), {}, "/v1.0"+url)
         sign = self.__generate_signature(
-            self._client_id + self.__access_token + t, self._secret_key
+            self._client_id + self.__access_token + t + stringToSign, self._secret_key
         )
 
         default_headers = {
@@ -82,8 +96,10 @@ class _TuyaApi:
         :return: access token
         """
         t = self.__get_timestamp()
-        uri = self._base_url + "/token?grant_type=1"
-        sign = self.__generate_signature(self._client_id + t, self._secret_key)
+        sign_url = "/token?grant_type=1"
+        uri = self._base_url + sign_url
+        string_to_sign = self.__generate_stringToSign("GET", "", {}, "/v1.0"+sign_url)
+        sign = self.__generate_signature(self._client_id + t + string_to_sign, self._secret_key)
 
         headers_pattern = {
             "client_id": self._client_id,
@@ -118,7 +134,7 @@ class _TuyaApi:
         :return: response dict
         """
         uri = self._base_url + postfix
-        headers = self.__request_template()
+        headers = self.__request_template(postfix, "GET")
 
         try:
             response = requests.get(uri, headers=headers).json()
@@ -143,7 +159,7 @@ class _TuyaApi:
 
         body = json.dumps(body)
         uri = self._base_url + postfix
-        headers = self.__request_template()
+        headers = self.__request_template(postfix, "POST", body)
 
         try:
             response = requests.post(uri, headers=headers, data=body).json()
